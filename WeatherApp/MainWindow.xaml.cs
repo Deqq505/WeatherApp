@@ -1,7 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Configuration;
 using System.Net.Http;
 using System.Windows;
+using System.Windows.Input;
+using LiveCharts;
+using LiveCharts.Wpf;
 using Newtonsoft.Json.Linq;
 
 namespace WeatherApp
@@ -9,11 +13,24 @@ namespace WeatherApp
     public partial class MainWindow : Window
     {
         private const string ApiUrl = "http://api.openweathermap.org/data/2.5/weather?q={0}&appid={1}&units=metric&lang=pl";
+        private const string ForecastUrl = "http://api.openweathermap.org/data/2.5/forecast?q={0}&appid={1}&units=metric&lang=pl";
         private string _apiKey;
+
+        public SeriesCollection SeriesCollection { get; set; }
+        public List<string> Dates { get; set; }
+        public ChartValues<double> Temperatures { get; set; }
 
         public MainWindow()
         {
             InitializeComponent();
+
+            
+            SeriesCollection = new SeriesCollection();
+            Dates = new List<string>();
+            Temperatures = new ChartValues<double>();
+
+           
+            DataContext = this;
 
             
             _apiKey = ConfigurationManager.AppSettings["ApiKey"] ?? throw new InvalidOperationException("Klucz API nie został znaleziony w pliku konfiguracyjnym.");
@@ -32,33 +49,40 @@ namespace WeatherApp
             {
                 try
                 {
-                    string url = string.Format(ApiUrl, city, _apiKey);
-                    HttpResponseMessage response = await client.GetAsync(url);
-                    response.EnsureSuccessStatusCode();
-                    string responseBody = await response.Content.ReadAsStringAsync();
-
-                    JObject weatherData = JObject.Parse(responseBody);
+                    
+                    string currentWeatherUrl = string.Format(ApiUrl, city, _apiKey);
+                    HttpResponseMessage currentResponse = await client.GetAsync(currentWeatherUrl);
+                    currentResponse.EnsureSuccessStatusCode();
+                    string currentResponseBody = await currentResponse.Content.ReadAsStringAsync();
+                    JObject currentWeatherData = JObject.Parse(currentResponseBody);
 
                     
-                    if (weatherData["weather"] == null || weatherData["main"] == null || weatherData["name"] == null)
+                    string forecastUrl = string.Format(ForecastUrl, city, _apiKey);
+                    HttpResponseMessage forecastResponse = await client.GetAsync(forecastUrl);
+                    forecastResponse.EnsureSuccessStatusCode();
+                    string forecastResponseBody = await forecastResponse.Content.ReadAsStringAsync();
+                    JObject forecastData = JObject.Parse(forecastResponseBody);
+
+                    
+                    if (currentWeatherData["weather"] == null || currentWeatherData["main"] == null || currentWeatherData["name"] == null)
                     {
                         MessageBox.Show("Nieprawidłowa odpowiedź z serwera pogodowego.");
                         return;
                     }
 
-                    string weatherDescription = weatherData["weather"][0]?["description"]?.ToString() ?? "Brak opisu";
-                    double temperature = weatherData["main"]?["temp"]?.ToObject<double>() ?? 0.0;
-                    double humidity = weatherData["main"]?["humidity"]?.ToObject<double>() ?? 0.0;
-                    string cityName = weatherData["name"]?.ToString() ?? "Nieznane miasto";
-
                     
+                    string weatherDescription = currentWeatherData["weather"][0]?["description"]?.ToString() ?? "Brak opisu";
+                    double temperature = currentWeatherData["main"]?["temp"]?.ToObject<double>() ?? 0.0;
+                    double humidity = currentWeatherData["main"]?["humidity"]?.ToObject<double>() ?? 0.0;
+                    string cityName = currentWeatherData["name"]?.ToString() ?? "Nieznane miasto";
+
                     CityText.Text = cityName;
                     TemperatureText.Text = $"Temperatura: {temperature}°C";
                     WeatherDescriptionText.Text = $"Opis: {weatherDescription}";
                     HumidityText.Text = $"Wilgotność: {humidity}%";
 
                     
-                    string iconCode = weatherData["weather"][0]?["icon"]?.ToString();
+                    string iconCode = currentWeatherData["weather"][0]?["icon"]?.ToString();
                     if (!string.IsNullOrEmpty(iconCode))
                     {
                         string iconUrl = $"http://openweathermap.org/img/wn/{iconCode}@2x.png";
@@ -66,19 +90,16 @@ namespace WeatherApp
                     }
 
                     
-                    double pressure = weatherData["main"]?["pressure"]?.ToObject<double>() ?? 0.0;
+                    double pressure = currentWeatherData["main"]?["pressure"]?.ToObject<double>() ?? 0.0;
                     PressureText.Text = $"Ciśnienie: {pressure} hPa";
 
-                    long sunrise = weatherData["sys"]?["sunrise"]?.ToObject<long>() ?? 0;
-                    long sunset = weatherData["sys"]?["sunset"]?.ToObject<long>() ?? 0;
+                    long sunrise = currentWeatherData["sys"]?["sunrise"]?.ToObject<long>() ?? 0;
+                    long sunset = currentWeatherData["sys"]?["sunset"]?.ToObject<long>() ?? 0;
                     SunriseText.Text = $"Wschód słońca: {DateTimeOffset.FromUnixTimeSeconds(sunrise).ToLocalTime().ToString("HH:mm")}";
                     SunsetText.Text = $"Zachód słońca: {DateTimeOffset.FromUnixTimeSeconds(sunset).ToLocalTime().ToString("HH:mm")}";
 
                     
-                    if (!HistoryListBox.Items.Contains(cityName))
-                    {
-                        HistoryListBox.Items.Add(cityName);
-                    }
+                    PrepareChartData(forecastData);
                 }
                 catch (HttpRequestException ex)
                 {
@@ -89,6 +110,71 @@ namespace WeatherApp
                     MessageBox.Show($"Wystąpił nieoczekiwany błąd: {ex.Message}");
                 }
             }
+        }
+
+        private void PrepareChartData(JObject forecastData)
+        {
+            
+            Dates.Clear();
+            Temperatures.Clear();
+
+            
+            foreach (var item in forecastData["list"])
+            {
+                string date = item["dt_txt"].ToString();
+                double temperature = item["main"]["temp"].ToObject<double>();
+
+                Dates.Add(date);
+                Temperatures.Add(temperature);
+            }
+
+           
+            SeriesCollection.Clear();
+            SeriesCollection.Add(new LineSeries
+            {
+                Title = "Temperatura (°C)",
+                Values = Temperatures,
+                PointGeometrySize = 10,
+                Stroke = System.Windows.Media.Brushes.DodgerBlue,
+                Fill = System.Windows.Media.Brushes.Transparent
+            });
+
+            
+            TemperatureChart.AxisX[0].Labels = Dates;
+        }
+
+        
+        private void Border_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.LeftButton == MouseButtonState.Pressed)
+            {
+                DragMove();
+            }
+        }
+
+        
+        private void MinimizeButton_Click(object sender, RoutedEventArgs e)
+        {
+            WindowState = WindowState.Minimized;
+        }
+
+        
+        private void MaximizeButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (WindowState == WindowState.Maximized)
+            {
+                WindowState = WindowState.Normal;
+            }
+            else
+            {
+                WindowState = WindowState.Maximized;
+            }
+        }
+
+        
+        private void CloseButton_Click(object sender, RoutedEventArgs e)
+        {
+            Close();
         }
 
         private void CityTextBox_GotFocus(object sender, RoutedEventArgs e)
