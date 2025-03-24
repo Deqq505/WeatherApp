@@ -2,95 +2,159 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
-        Title="Weather App" Height="700" Width="900"
+        Title="Weather App" 
+        Height="700" Width="900"
         WindowStartupLocation="CenterScreen"
-        Background="#FF1C1C1E" Foreground="White"
-        WindowStyle="None" AllowsTransparency="True">
-    <Grid>
-       
-        <Border Background="#FF007ACC" Height="30" VerticalAlignment="Top" MouseLeftButtonDown="Border_MouseLeftButtonDown">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Content="🗕" FontSize="14" Background="Transparent" BorderBrush="Transparent" Foreground="White" Click="MinimizeButton_Click"/>
-                <Button Content="🗖" FontSize="14" Background="Transparent" BorderBrush="Transparent" Foreground="White" Click="MaximizeButton_Click"/>
-                <Button Content="✕" FontSize="14" Background="Transparent" BorderBrush="Transparent" Foreground="White" Click="CloseButton_Click"/>
-            </StackPanel>
-        </Border>
+        Background="Transparent"
+        WindowStyle="None" 
+        AllowsTransparency="True">
+    <Window.Clip>
+        <RectangleGeometry Rect="0,0,900,700" RadiusX="15" RadiusY="15"/>
+    </Window.Clip>
 
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,30,0,0">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
+    <Border Background="#FF2D2D30" CornerRadius="15">
+        <Grid x:Name="MainGrid">
+            <Border x:Name="ErrorBorder" 
+                    Background="#FF1C1C1E" 
+                    BorderBrush="#FF007ACC" 
+                    BorderThickness="2"
+                    CornerRadius="5"
+                    Visibility="Collapsed"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Padding="20"
+                    Margin="0,0,0,20"
+                    Panel.ZIndex="999">
+                <TextBlock x:Name="ErrorTextBlock" 
+                           Foreground="White" 
+                           FontSize="18"
+                           TextWrapping="Wrap"/>
+            </Border>
 
-                
-                <Border Grid.Row="0" Background="#FF007ACC" Padding="15">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                        <TextBlock Text="Weather App" FontSize="28" FontWeight="Bold" VerticalAlignment="Center" Foreground="White"/>
-                    </StackPanel>
-                </Border>
+            <ProgressBar x:Name="LoadingIndicator" 
+                         IsIndeterminate="True"
+                         Visibility="Collapsed"
+                         Height="10"
+                         Width="200"
+                         HorizontalAlignment="Center"
+                         VerticalAlignment="Center"
+                         Foreground="#FF007ACC"
+                         Panel.ZIndex="1000"/>
 
-                
-                <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="20,20,20,10">
-                    <TextBox x:Name="CityTextBox" Width="400" Padding="10" FontSize="18" Background="#FF2D2D30" Foreground="White" BorderBrush="#FF007ACC" 
-                             Text="Wpisz miasto" GotFocus="CityTextBox_GotFocus" LostFocus="CityTextBox_LostFocus"/>
-                    <Button x:Name="GetWeatherButton" Content="Szukaj" Width="120" Margin="15,0,0,0" Padding="10" FontSize="18" Background="#FF007ACC" Foreground="White" BorderBrush="#FF005A9E" Click="GetWeatherButton_Click"/>
-                </StackPanel>
-
-                
-                <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="20,10,20,20">
-                    
-                    <Image x:Name="WeatherIcon" Width="120" Height="120" Margin="0,0,25,0"/>
-                    
-                    <StackPanel>
-                        <TextBlock x:Name="CityText" FontSize="26" FontWeight="Bold" TextAlignment="Center" Margin="0,0,0,10" Foreground="#FF007ACC"/>
-                        <TextBlock x:Name="TemperatureText" FontSize="22" Margin="0,5,0,0" Foreground="White"/>
-                        <TextBlock x:Name="WeatherDescriptionText" FontSize="18" Margin="0,5,0,0" Foreground="White"/>
-                        <TextBlock x:Name="HumidityText" FontSize="18" Margin="0,5,0,0" Foreground="White"/>
-                    </StackPanel>
-                </StackPanel>
-
-                
-                <Grid Grid.Row="3" Margin="20,10,20,20">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-
-                    
-                    <StackPanel Grid.Column="0" Margin="10">
-                        <TextBlock Text="Ciśnienie:" FontSize="18" Foreground="#FF007ACC"/>
-                        <TextBlock x:Name="PressureText" FontSize="16" Margin="0,5,0,0" Foreground="White"/>
-                    </StackPanel>
-
-                    
-                    <StackPanel Grid.Column="1" Margin="10">
-                        <TextBlock Text="Wschód słońca:" FontSize="18" Foreground="#FF007ACC"/>
-                        <TextBlock x:Name="SunriseText" FontSize="16" Margin="0,5,0,0" Foreground="White"/>
-                        <TextBlock Text="Zachód słońca:" FontSize="18" Margin="0,10,0,0" Foreground="#FF007ACC"/>
-                        <TextBlock x:Name="SunsetText" FontSize="16" Margin="0,5,0,0" Foreground="White"/>
+            <Border Background="#FF3A3A3C" Height="40" VerticalAlignment="Top" 
+                    MouseLeftButtonDown="Border_MouseLeftButtonDown"
+                    CornerRadius="15,15,0,0">
+                <Grid>
+                    <TextBlock Text="Weather App" FontSize="16" VerticalAlignment="Center" Margin="15,0,0,0" Foreground="#FFE0E0E0"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="🗕" FontSize="14" Width="40" Height="40" Background="Transparent" BorderBrush="Transparent" Foreground="#FFE0E0E0" Click="MinimizeButton_Click"/>
+                        <Button Content="🗖" FontSize="14" Width="40" Height="40" Background="Transparent" BorderBrush="Transparent" Foreground="#FFE0E0E0" Click="MaximizeButton_Click"/>
+                        <Button Content="✕" FontSize="14" Width="40" Height="40" Background="Transparent" BorderBrush="Transparent" Foreground="#FFE0E0E0" Click="CloseButton_Click"/>
                     </StackPanel>
                 </Grid>
+            </Border>
 
-                
-                <lvc:CartesianChart Grid.Row="4" x:Name="TemperatureChart" Margin="20,10,20,20" LegendLocation="Top" Height="300">
-                    <lvc:CartesianChart.Series>
-                        <lvc:LineSeries Title="Temperatura (°C)" Values="{Binding Temperatures}" PointGeometrySize="10" Stroke="#FF007ACC" Fill="Transparent"/>
-                    </lvc:CartesianChart.Series>
-                    <lvc:CartesianChart.AxisX>
-                        <lvc:Axis Title="Data" Labels="{Binding Dates}" LabelsRotation="45" Foreground="White"/>
-                    </lvc:CartesianChart.AxisX>
-                    <lvc:CartesianChart.AxisY>
-                        <lvc:Axis Title="Temperatura (°C)" Foreground="White"/>
-                    </lvc:CartesianChart.AxisY>
-                    <lvc:CartesianChart.Background>
-                        <SolidColorBrush Color="#FF2D2D30"/>
-                    </lvc:CartesianChart.Background>
-                </lvc:CartesianChart>
-            </Grid>
-        </ScrollViewer>
-    </Grid>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,40,0,0">
+                <Grid x:Name="ContentGrid">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" Background="#FF3A3A3C" CornerRadius="8" Margin="20,30,20,10" Padding="15">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                            <TextBox x:Name="CityTextBox" Width="400" Padding="10" FontSize="18" Background="#FF2D2D30" Foreground="#FFE0E0E0" BorderBrush="#FF007ACC" 
+                                     Text="Wpisz miasto" GotFocus="CityTextBox_GotFocus" LostFocus="CityTextBox_LostFocus"/>
+                            <Button x:Name="GetWeatherButton" Content="Szukaj" Width="120" Margin="15,0,0,0" Padding="10" FontSize="18" Background="#FF007ACC" Foreground="White" BorderBrush="#FF005A9E" Click="GetWeatherButton_Click"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Row="1" Background="#FF3A3A3C" CornerRadius="8" Margin="20,10,20,10" Padding="20">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                            <Image x:Name="WeatherIcon" Width="120" Height="120" Margin="0,0,25,0"/>
+                            <StackPanel>
+                                <TextBlock x:Name="CityText" FontSize="26" FontWeight="Bold" TextAlignment="Center" Margin="0,0,0,10" Foreground="#FF007ACC"/>
+                                <TextBlock x:Name="TemperatureText" FontSize="22" Margin="0,5,0,0" Foreground="#FFE0E0E0"/>
+                                <TextBlock x:Name="WeatherDescriptionText" FontSize="18" Margin="0,5,0,0" Foreground="#FFE0E0E0"/>
+                                <TextBlock x:Name="HumidityText" FontSize="18" Margin="0,5,0,0" Foreground="#FFE0E0E0"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Row="2" Background="#FF3A3A3C" CornerRadius="8" Margin="20,10,20,10" Padding="15">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Border Grid.Column="0" BorderBrush="#FF007ACC" BorderThickness="0,0,1,0" Margin="10">
+                                <StackPanel Margin="10">
+                                    <TextBlock Text="Ciśnienie:" FontSize="18" Foreground="#FF007ACC"/>
+                                    <TextBlock x:Name="PressureText" FontSize="16" Margin="0,5,0,0" Foreground="#FFE0E0E0"/>
+                                </StackPanel>
+                            </Border>
+
+                            <StackPanel Grid.Column="1" Margin="10">
+                                <TextBlock Text="Wschód słońca:" FontSize="18" Foreground="#FF007ACC"/>
+                                <TextBlock x:Name="SunriseText" FontSize="16" Margin="0,5,0,0" Foreground="#FFE0E0E0"/>
+                                <TextBlock Text="Zachód słońca:" FontSize="18" Margin="0,10,0,0" Foreground="#FF007ACC"/>
+                                <TextBlock x:Name="SunsetText" FontSize="16" Margin="0,5,0,0" Foreground="#FFE0E0E0"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="3" Background="#FF3A3A3C" CornerRadius="8" Margin="20,10,20,20" Padding="15">
+                        <lvc:CartesianChart x:Name="TemperatureChart" LegendLocation="Top" Height="300">
+                            <lvc:CartesianChart.Series>
+                                <lvc:LineSeries Values="{Binding Temperatures}" 
+                                              PointGeometrySize="10" 
+                                              Stroke="#FF4FC3F7" 
+                                              Fill="Transparent"
+                                              StrokeThickness="3"
+                                              Title="Temperatura (°C)">
+                                    <lvc:LineSeries.PointGeometry>
+                                        <Geometry>M 0,5 L 5,0 10,5 5,10 Z</Geometry>
+                                    </lvc:LineSeries.PointGeometry>
+                                </lvc:LineSeries>
+                            </lvc:CartesianChart.Series>
+                            <lvc:CartesianChart.AxisX>
+                                <lvc:Axis Title="Data" 
+                                         Labels="{Binding Dates}" 
+                                         LabelsRotation="45" 
+                                         Foreground="#FFE0E0E0">
+                                    <lvc:Axis.Separator>
+                                        <lvc:Separator StrokeThickness="0.5" Stroke="#FF555555"/>
+                                    </lvc:Axis.Separator>
+                                </lvc:Axis>
+                            </lvc:CartesianChart.AxisX>
+                            <lvc:CartesianChart.AxisY>
+                                <lvc:Axis Title="Temperatura (°C)" 
+                                         Foreground="#FFE0E0E0">
+                                    <lvc:Axis.Separator>
+                                        <lvc:Separator StrokeThickness="0.5" Stroke="#FF555555"/>
+                                    </lvc:Axis.Separator>
+                                </lvc:Axis>
+                            </lvc:CartesianChart.AxisY>
+                            <lvc:CartesianChart.Background>
+                                <SolidColorBrush Color="#FF2D2D30"/>
+                            </lvc:CartesianChart.Background>
+                            <lvc:CartesianChart.DataTooltip>
+                                <lvc:DefaultTooltip Background="#FF3A3A3C" 
+                                                   BorderBrush="#FF4FC3F7"
+                                                   Foreground="White"
+                                                   ShowTitle="True"
+                                                   ShowSeries="True"
+                                                   CornerRadius="5"
+                                                   FontSize="14"
+                                                   FontWeight="Bold"/>
+                            </lvc:CartesianChart.DataTooltip>
+                        </lvc:CartesianChart>
+                    </Border>
+                </Grid>
+            </ScrollViewer>
+        </Grid>
+    </Border>
 </Window>
