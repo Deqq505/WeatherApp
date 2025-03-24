@@ -9,6 +9,7 @@ using System.Windows.Media;
 using LiveCharts;
 using LiveCharts.Wpf;
 using Newtonsoft.Json.Linq;
+using Microsoft.Web.WebView2.Core;
 
 namespace WeatherApp
 {
@@ -17,10 +18,21 @@ namespace WeatherApp
         private const string ApiUrl = "http://api.openweathermap.org/data/2.5/weather?q={0}&appid={1}&units=metric&lang=pl";
         private const string ForecastUrl = "http://api.openweathermap.org/data/2.5/forecast?q={0}&appid={1}&units=metric&lang=pl";
         private readonly string _apiKey;
+        private double _latitude;
+        private double _longitude;
 
         public SeriesCollection SeriesCollection { get; set; } = new();
         public List<string> Dates { get; set; } = new();
         public ChartValues<double> Temperatures { get; set; } = new();
+
+        private readonly Dictionary<string, string> MapLayers = new()
+        {
+            {"Temperatura", "temperature"},
+            {"Wiatr", "wind"},
+            {"Opady", "precipitation"},
+            {"Ciśnienie", "pressure"},
+            {"Chmury", "clouds"}
+        };
 
         public MainWindow()
         {
@@ -28,39 +40,31 @@ namespace WeatherApp
             InitializeChart();
             _apiKey = ConfigurationManager.AppSettings["ApiKey"] ?? throw new InvalidOperationException("Klucz API nie został znaleziony w pliku konfiguracyjnym.");
             this.StateChanged += MainWindow_StateChanged;
+            InitializeAsync();
         }
 
-        private void MainWindow_StateChanged(object? sender, EventArgs e)
+        private async void InitializeAsync()
         {
-            if (WindowState == WindowState.Maximized)
-            {
-                
-                var rect = new RectangleGeometry();
-                rect.Rect = new Rect(0, 0, SystemParameters.PrimaryScreenWidth, SystemParameters.PrimaryScreenHeight);
-                this.Clip = rect;
-            }
-            else
-            {
-                
-                var rect = new RectangleGeometry();
-                rect.Rect = new Rect(0, 0, 900, 700);
-                rect.RadiusX = 15;
-                rect.RadiusY = 15;
-                this.Clip = rect;
-            }
+            await WeatherMapView.EnsureCoreWebView2Async();
+            WeatherMapView.CoreWebView2.Settings.IsZoomControlEnabled = false;
+            WeatherMapView.CoreWebView2.Settings.AreDevToolsEnabled = false;
         }
 
-        private void InitializeChart()
+        private void UpdateWeatherMap()
         {
-            DataContext = this;
-            SeriesCollection.Add(new LineSeries
+            string selectedLayer = (MapLayerComboBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Wiatr";
+            string layer = MapLayers.ContainsKey(selectedLayer) ? MapLayers[selectedLayer] : "wind";
+
+            string mapUrl = $"https://openweathermap.org/weathermap?basemap=map&cities=true&layer={layer}&lat={_latitude}&lon={_longitude}&zoom=10";
+            WeatherMapView.Source = new Uri(mapUrl);
+        }
+
+        private void MapLayerComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_latitude != 0 && _longitude != 0)
             {
-                Title = "Temperatura (°C)",
-                Values = Temperatures,
-                PointGeometrySize = 10,
-                Stroke = Brushes.DodgerBlue,
-                Fill = Brushes.Transparent
-            });
+                UpdateWeatherMap();
+            }
         }
 
         private async void GetWeatherButton_Click(object sender, RoutedEventArgs e)
@@ -105,6 +109,8 @@ namespace WeatherApp
 
                     UpdateCurrentWeatherUI(currentWeatherData);
                     UpdateChartData(forecastData);
+                    UpdateMapCoordinates(currentWeatherData);
+                    UpdateWeatherMap();
                     HideErrorMessage();
                 }
                 catch (HttpRequestException)
@@ -120,6 +126,12 @@ namespace WeatherApp
                     HideLoadingIndicator();
                 }
             }
+        }
+
+        private void UpdateMapCoordinates(JObject weatherData)
+        {
+            _latitude = weatherData["coord"]?["lat"]?.ToObject<double>() ?? 0;
+            _longitude = weatherData["coord"]?["lon"]?.ToObject<double>() ?? 0;
         }
 
         private void ShowErrorMessage(string message)
@@ -149,14 +161,16 @@ namespace WeatherApp
             TemperatureText.Text = string.Empty;
             WeatherDescriptionText.Text = string.Empty;
             HumidityText.Text = string.Empty;
+            WindText.Text = string.Empty;
             PressureText.Text = string.Empty;
             SunriseText.Text = string.Empty;
             SunsetText.Text = string.Empty;
+            VisibilityText.Text = string.Empty;
+            CloudsText.Text = string.Empty;
             WeatherIcon.Source = null;
 
             Dates.Clear();
             Temperatures.Clear();
-            TemperatureChart.Update(true, true);
         }
 
         private void UpdateCurrentWeatherUI(JObject currentWeatherData)
@@ -171,7 +185,12 @@ namespace WeatherApp
             WeatherDescriptionText.Text = $"Opis: {weatherDescription}";
             HumidityText.Text = $"Wilgotność: {humidity}%";
 
-            string? iconCode = currentWeatherData["weather"]?[0]?["icon"]?.ToString();
+            double windSpeed = currentWeatherData["wind"]?["speed"]?.ToObject<double>() ?? 0.0;
+            double windDeg = currentWeatherData["wind"]?["deg"]?.ToObject<double>() ?? 0.0;
+            string windDirection = GetWindDirection(windDeg);
+            WindText.Text = $"Wiatr: {windSpeed} m/s ({windDirection})";
+
+            string iconCode = currentWeatherData["weather"]?[0]?["icon"]?.ToString();
             if (!string.IsNullOrEmpty(iconCode))
             {
                 string iconUrl = $"http://openweathermap.org/img/wn/{iconCode}@2x.png";
@@ -185,6 +204,24 @@ namespace WeatherApp
             long sunset = currentWeatherData["sys"]?["sunset"]?.ToObject<long>() ?? 0;
             SunriseText.Text = $"Wschód słońca: {DateTimeOffset.FromUnixTimeSeconds(sunrise).ToLocalTime():HH:mm}";
             SunsetText.Text = $"Zachód słońca: {DateTimeOffset.FromUnixTimeSeconds(sunset).ToLocalTime():HH:mm}";
+
+            int visibility = currentWeatherData["visibility"]?.ToObject<int>() ?? 0;
+            VisibilityText.Text = $"Widoczność: {(visibility / 1000.0):0.0} km";
+
+            int clouds = currentWeatherData["clouds"]?["all"]?.ToObject<int>() ?? 0;
+            CloudsText.Text = $"Zachmurzenie: {clouds}%";
+        }
+
+        private string GetWindDirection(double degrees)
+        {
+            if (degrees >= 337.5 || degrees < 22.5) return "N";
+            if (degrees >= 22.5 && degrees < 67.5) return "NE";
+            if (degrees >= 67.5 && degrees < 112.5) return "E";
+            if (degrees >= 112.5 && degrees < 157.5) return "SE";
+            if (degrees >= 157.5 && degrees < 202.5) return "S";
+            if (degrees >= 202.5 && degrees < 247.5) return "SW";
+            if (degrees >= 247.5 && degrees < 292.5) return "W";
+            return "NW";
         }
 
         private void UpdateChartData(JObject forecastData)
@@ -205,17 +242,6 @@ namespace WeatherApp
                     Temperatures.Add(temperature);
                 }
             }
-
-            TemperatureChart.AxisX.Clear();
-            TemperatureChart.AxisX.Add(new Axis
-            {
-                Title = "Data",
-                Labels = Dates,
-                LabelsRotation = 45,
-                Foreground = Brushes.White
-            });
-
-            TemperatureChart.Update(true, true);
         }
 
         private void Border_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -255,6 +281,37 @@ namespace WeatherApp
             {
                 CityTextBox.Text = "Wpisz miasto";
             }
+        }
+
+        private void MainWindow_StateChanged(object? sender, EventArgs e)
+        {
+            if (WindowState == WindowState.Maximized)
+            {
+                var rect = new RectangleGeometry();
+                rect.Rect = new Rect(0, 0, SystemParameters.PrimaryScreenWidth, SystemParameters.PrimaryScreenHeight);
+                this.Clip = rect;
+            }
+            else
+            {
+                var rect = new RectangleGeometry();
+                rect.Rect = new Rect(0, 0, 1200, 900);
+                rect.RadiusX = 15;
+                rect.RadiusY = 15;
+                this.Clip = rect;
+            }
+        }
+
+        private void InitializeChart()
+        {
+            DataContext = this;
+            SeriesCollection.Add(new LineSeries
+            {
+                Title = "Temperatura (°C)",
+                Values = Temperatures,
+                PointGeometrySize = 10,
+                Stroke = Brushes.DodgerBlue,
+                Fill = Brushes.Transparent
+            });
         }
     }
 }

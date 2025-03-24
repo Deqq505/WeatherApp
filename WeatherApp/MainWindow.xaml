@@ -2,18 +2,20 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         Title="Weather App" 
-        Height="700" Width="900"
+        Height="900" Width="1200"
         WindowStartupLocation="CenterScreen"
         Background="Transparent"
         WindowStyle="None" 
         AllowsTransparency="True">
     <Window.Clip>
-        <RectangleGeometry Rect="0,0,900,700" RadiusX="15" RadiusY="15"/>
+        <RectangleGeometry Rect="0,0,1200,900" RadiusX="15" RadiusY="15"/>
     </Window.Clip>
 
     <Border Background="#FF2D2D30" CornerRadius="15">
         <Grid x:Name="MainGrid">
+           
             <Border x:Name="ErrorBorder" 
                     Background="#FF1C1C1E" 
                     BorderBrush="#FF007ACC" 
@@ -31,6 +33,7 @@
                            TextWrapping="Wrap"/>
             </Border>
 
+          
             <ProgressBar x:Name="LoadingIndicator" 
                          IsIndeterminate="True"
                          Visibility="Collapsed"
@@ -60,9 +63,10 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="500"/>
                     </Grid.RowDefinitions>
 
+             
                     <Border Grid.Row="0" Background="#FF3A3A3C" CornerRadius="8" Margin="20,30,20,10" Padding="15">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                             <TextBox x:Name="CityTextBox" Width="400" Padding="10" FontSize="18" Background="#FF2D2D30" Foreground="#FFE0E0E0" BorderBrush="#FF007ACC" 
@@ -71,6 +75,7 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- Aktualna pogoda -->
                     <Border Grid.Row="1" Background="#FF3A3A3C" CornerRadius="8" Margin="20,10,20,10" Padding="20">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                             <Image x:Name="WeatherIcon" Width="120" Height="120" Margin="0,0,25,0"/>
@@ -79,13 +84,16 @@
                                 <TextBlock x:Name="TemperatureText" FontSize="22" Margin="0,5,0,0" Foreground="#FFE0E0E0"/>
                                 <TextBlock x:Name="WeatherDescriptionText" FontSize="18" Margin="0,5,0,0" Foreground="#FFE0E0E0"/>
                                 <TextBlock x:Name="HumidityText" FontSize="18" Margin="0,5,0,0" Foreground="#FFE0E0E0"/>
+                                <TextBlock x:Name="WindText" FontSize="18" Margin="0,5,0,0" Foreground="#FFE0E0E0"/>
                             </StackPanel>
                         </StackPanel>
                     </Border>
 
+                    <!-- Dodatkowe informacje -->
                     <Border Grid.Row="2" Background="#FF3A3A3C" CornerRadius="8" Margin="20,10,20,10" Padding="15">
                         <Grid>
                             <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
@@ -97,61 +105,52 @@
                                 </StackPanel>
                             </Border>
 
-                            <StackPanel Grid.Column="1" Margin="10">
-                                <TextBlock Text="Wschód słońca:" FontSize="18" Foreground="#FF007ACC"/>
-                                <TextBlock x:Name="SunriseText" FontSize="16" Margin="0,5,0,0" Foreground="#FFE0E0E0"/>
-                                <TextBlock Text="Zachód słońca:" FontSize="18" Margin="0,10,0,0" Foreground="#FF007ACC"/>
-                                <TextBlock x:Name="SunsetText" FontSize="16" Margin="0,5,0,0" Foreground="#FFE0E0E0"/>
+                            <Border Grid.Column="1" BorderBrush="#FF007ACC" BorderThickness="0,0,1,0" Margin="10">
+                                <StackPanel Margin="10">
+                                    <TextBlock Text="Wschód słońca:" FontSize="18" Foreground="#FF007ACC"/>
+                                    <TextBlock x:Name="SunriseText" FontSize="16" Margin="0,5,0,0" Foreground="#FFE0E0E0"/>
+                                    <TextBlock Text="Zachód słońca:" FontSize="18" Margin="0,10,0,0" Foreground="#FF007ACC"/>
+                                    <TextBlock x:Name="SunsetText" FontSize="16" Margin="0,5,0,0" Foreground="#FFE0E0E0"/>
+                                </StackPanel>
+                            </Border>
+
+                            <StackPanel Grid.Column="2" Margin="10">
+                                <TextBlock Text="Widoczność:" FontSize="18" Foreground="#FF007ACC"/>
+                                <TextBlock x:Name="VisibilityText" FontSize="16" Margin="0,5,0,0" Foreground="#FFE0E0E0"/>
+                                <TextBlock Text="Zachmurzenie:" FontSize="18" Margin="0,10,0,0" Foreground="#FF007ACC"/>
+                                <TextBlock x:Name="CloudsText" FontSize="16" Margin="0,5,0,0" Foreground="#FFE0E0E0"/>
                             </StackPanel>
                         </Grid>
                     </Border>
 
-                    <Border Grid.Row="3" Background="#FF3A3A3C" CornerRadius="8" Margin="20,10,20,20" Padding="15">
-                        <lvc:CartesianChart x:Name="TemperatureChart" LegendLocation="Top" Height="300">
-                            <lvc:CartesianChart.Series>
-                                <lvc:LineSeries Values="{Binding Temperatures}" 
-                                              PointGeometrySize="10" 
-                                              Stroke="#FF4FC3F7" 
-                                              Fill="Transparent"
-                                              StrokeThickness="3"
-                                              Title="Temperatura (°C)">
-                                    <lvc:LineSeries.PointGeometry>
-                                        <Geometry>M 0,5 L 5,0 10,5 5,10 Z</Geometry>
-                                    </lvc:LineSeries.PointGeometry>
-                                </lvc:LineSeries>
-                            </lvc:CartesianChart.Series>
-                            <lvc:CartesianChart.AxisX>
-                                <lvc:Axis Title="Data" 
-                                         Labels="{Binding Dates}" 
-                                         LabelsRotation="45" 
-                                         Foreground="#FFE0E0E0">
-                                    <lvc:Axis.Separator>
-                                        <lvc:Separator StrokeThickness="0.5" Stroke="#FF555555"/>
-                                    </lvc:Axis.Separator>
-                                </lvc:Axis>
-                            </lvc:CartesianChart.AxisX>
-                            <lvc:CartesianChart.AxisY>
-                                <lvc:Axis Title="Temperatura (°C)" 
-                                         Foreground="#FFE0E0E0">
-                                    <lvc:Axis.Separator>
-                                        <lvc:Separator StrokeThickness="0.5" Stroke="#FF555555"/>
-                                    </lvc:Axis.Separator>
-                                </lvc:Axis>
-                            </lvc:CartesianChart.AxisY>
-                            <lvc:CartesianChart.Background>
-                                <SolidColorBrush Color="#FF2D2D30"/>
-                            </lvc:CartesianChart.Background>
-                            <lvc:CartesianChart.DataTooltip>
-                                <lvc:DefaultTooltip Background="#FF3A3A3C" 
-                                                   BorderBrush="#FF4FC3F7"
-                                                   Foreground="White"
-                                                   ShowTitle="True"
-                                                   ShowSeries="True"
-                                                   CornerRadius="5"
-                                                   FontSize="14"
-                                                   FontWeight="Bold"/>
-                            </lvc:CartesianChart.DataTooltip>
-                        </lvc:CartesianChart>
+               
+                    <Border Grid.Row="3" Background="#FF3A3A3C" CornerRadius="8" Margin="20,10,20,20">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="10,5,10,0">
+                                <TextBlock Text="Mapa pogodowa" FontSize="18" Foreground="#FF007ACC"/>
+                                <ComboBox x:Name="MapLayerComboBox" 
+                                          SelectedIndex="1"
+                                          Margin="20,0,0,0"
+                                          Width="200"
+                                          SelectionChanged="MapLayerComboBox_SelectionChanged">
+                                    <ComboBoxItem Content="Temperatura"/>
+                                    <ComboBoxItem Content="Wiatr"/>
+                                    <ComboBoxItem Content="Opady"/>
+                                    <ComboBoxItem Content="Ciśnienie"/>
+                                    <ComboBoxItem Content="Chmury"/>
+                                </ComboBox>
+                            </StackPanel>
+
+                            <wv2:WebView2 x:Name="WeatherMapView" 
+                                        Grid.Row="1"
+                                        Margin="10"
+                                        Height="400"/>
+                        </Grid>
                     </Border>
                 </Grid>
             </ScrollViewer>
