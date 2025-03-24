@@ -24,15 +24,12 @@ namespace WeatherApp
         {
             InitializeComponent();
 
-            
             SeriesCollection = new SeriesCollection();
             Dates = new List<string>();
             Temperatures = new ChartValues<double>();
 
-           
             DataContext = this;
 
-            
             _apiKey = ConfigurationManager.AppSettings["ApiKey"] ?? throw new InvalidOperationException("Klucz API nie został znaleziony w pliku konfiguracyjnym.");
         }
 
@@ -44,6 +41,9 @@ namespace WeatherApp
                 MessageBox.Show("Proszę wpisać nazwę miasta.");
                 return;
             }
+
+            
+            ClearWeatherData();
 
             using (HttpClient client = new HttpClient())
             {
@@ -71,34 +71,7 @@ namespace WeatherApp
                     }
 
                     
-                    string weatherDescription = currentWeatherData["weather"][0]?["description"]?.ToString() ?? "Brak opisu";
-                    double temperature = currentWeatherData["main"]?["temp"]?.ToObject<double>() ?? 0.0;
-                    double humidity = currentWeatherData["main"]?["humidity"]?.ToObject<double>() ?? 0.0;
-                    string cityName = currentWeatherData["name"]?.ToString() ?? "Nieznane miasto";
-
-                    CityText.Text = cityName;
-                    TemperatureText.Text = $"Temperatura: {temperature}°C";
-                    WeatherDescriptionText.Text = $"Opis: {weatherDescription}";
-                    HumidityText.Text = $"Wilgotność: {humidity}%";
-
-                    
-                    string iconCode = currentWeatherData["weather"][0]?["icon"]?.ToString();
-                    if (!string.IsNullOrEmpty(iconCode))
-                    {
-                        string iconUrl = $"http://openweathermap.org/img/wn/{iconCode}@2x.png";
-                        WeatherIcon.Source = new System.Windows.Media.Imaging.BitmapImage(new Uri(iconUrl));
-                    }
-
-                    
-                    double pressure = currentWeatherData["main"]?["pressure"]?.ToObject<double>() ?? 0.0;
-                    PressureText.Text = $"Ciśnienie: {pressure} hPa";
-
-                    long sunrise = currentWeatherData["sys"]?["sunrise"]?.ToObject<long>() ?? 0;
-                    long sunset = currentWeatherData["sys"]?["sunset"]?.ToObject<long>() ?? 0;
-                    SunriseText.Text = $"Wschód słońca: {DateTimeOffset.FromUnixTimeSeconds(sunrise).ToLocalTime().ToString("HH:mm")}";
-                    SunsetText.Text = $"Zachód słońca: {DateTimeOffset.FromUnixTimeSeconds(sunset).ToLocalTime().ToString("HH:mm")}";
-
-                    
+                    UpdateCurrentWeatherUI(currentWeatherData);
                     PrepareChartData(forecastData);
                 }
                 catch (HttpRequestException ex)
@@ -112,11 +85,69 @@ namespace WeatherApp
             }
         }
 
+        private void ClearWeatherData()
+        {
+            
+            CityText.Text = string.Empty;
+            TemperatureText.Text = string.Empty;
+            WeatherDescriptionText.Text = string.Empty;
+            HumidityText.Text = string.Empty;
+            PressureText.Text = string.Empty;
+            SunriseText.Text = string.Empty;
+            SunsetText.Text = string.Empty;
+            WeatherIcon.Source = null;
+
+            
+            Dates.Clear();
+            Temperatures.Clear();
+            SeriesCollection.Clear();
+
+            
+            SeriesCollection = new SeriesCollection();
+            TemperatureChart.Series = SeriesCollection;
+
+            
+            TemperatureChart.Update(true, true);
+        }
+
+        private void UpdateCurrentWeatherUI(JObject currentWeatherData)
+        {
+            string weatherDescription = currentWeatherData["weather"][0]?["description"]?.ToString() ?? "Brak opisu";
+            double temperature = currentWeatherData["main"]?["temp"]?.ToObject<double>() ?? 0.0;
+            double humidity = currentWeatherData["main"]?["humidity"]?.ToObject<double>() ?? 0.0;
+            string cityName = currentWeatherData["name"]?.ToString() ?? "Nieznane miasto";
+
+            CityText.Text = cityName;
+            TemperatureText.Text = $"Temperatura: {temperature}°C";
+            WeatherDescriptionText.Text = $"Opis: {weatherDescription}";
+            HumidityText.Text = $"Wilgotność: {humidity}%";
+
+            string iconCode = currentWeatherData["weather"][0]?["icon"]?.ToString();
+            if (!string.IsNullOrEmpty(iconCode))
+            {
+                string iconUrl = $"http://openweathermap.org/img/wn/{iconCode}@2x.png";
+                WeatherIcon.Source = new System.Windows.Media.Imaging.BitmapImage(new Uri(iconUrl));
+            }
+
+            double pressure = currentWeatherData["main"]?["pressure"]?.ToObject<double>() ?? 0.0;
+            PressureText.Text = $"Ciśnienie: {pressure} hPa";
+
+            long sunrise = currentWeatherData["sys"]?["sunrise"]?.ToObject<long>() ?? 0;
+            long sunset = currentWeatherData["sys"]?["sunset"]?.ToObject<long>() ?? 0;
+            SunriseText.Text = $"Wschód słońca: {DateTimeOffset.FromUnixTimeSeconds(sunrise).ToLocalTime().ToString("HH:mm")}";
+            SunsetText.Text = $"Zachód słońca: {DateTimeOffset.FromUnixTimeSeconds(sunset).ToLocalTime().ToString("HH:mm")}";
+        }
+
         private void PrepareChartData(JObject forecastData)
         {
             
             Dates.Clear();
             Temperatures.Clear();
+            SeriesCollection.Clear();
+
+            
+            SeriesCollection = new SeriesCollection();
+            TemperatureChart.Series = SeriesCollection;
 
             
             foreach (var item in forecastData["list"])
@@ -128,8 +159,7 @@ namespace WeatherApp
                 Temperatures.Add(temperature);
             }
 
-           
-            SeriesCollection.Clear();
+            
             SeriesCollection.Add(new LineSeries
             {
                 Title = "Temperatura (°C)",
@@ -140,10 +170,19 @@ namespace WeatherApp
             });
 
             
-            TemperatureChart.AxisX[0].Labels = Dates;
+            TemperatureChart.AxisX.Clear();
+            TemperatureChart.AxisX.Add(new Axis
+            {
+                Title = "Data",
+                Labels = Dates,
+                LabelsRotation = 45,
+                Foreground = System.Windows.Media.Brushes.White
+            });
+
+            
+            TemperatureChart.Update(true, true);
         }
 
-        
         private void Border_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (e.LeftButton == MouseButtonState.Pressed)
@@ -152,26 +191,16 @@ namespace WeatherApp
             }
         }
 
-        
         private void MinimizeButton_Click(object sender, RoutedEventArgs e)
         {
             WindowState = WindowState.Minimized;
         }
 
-        
         private void MaximizeButton_Click(object sender, RoutedEventArgs e)
         {
-            if (WindowState == WindowState.Maximized)
-            {
-                WindowState = WindowState.Normal;
-            }
-            else
-            {
-                WindowState = WindowState.Maximized;
-            }
+            WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
         }
 
-        
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
             Close();
